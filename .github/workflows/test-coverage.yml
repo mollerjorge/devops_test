@@ -2,8 +2,7 @@ name: Test Coverage Comparison
 
 on:
   pull_request:
-    # Run on all branches
-    branches: [ '*' ]
+    branches: [ main ]
 
 # Add permissions block to allow commenting on PR
 permissions:
@@ -139,122 +138,87 @@ jobs:
           fi
           echo "EOF" >> $GITHUB_ENV
       
+      - name: Create basic comment file
+        run: |
+          cat > comment.md << 'EOL'
+          ## Test Coverage Report ${{ env.ICON }}
+
+          ### Overview
+
+          | Metric | Base Branch | PR Branch | Difference |
+          | ------ | :---------: | :-------: | :--------: |
+          | **Lines** | ${{ env.BASE_COVERAGE }} | ${{ env.PR_COVERAGE }} | LINES_DIFF |
+          | **Statements** | ${{ env.BASE_STATEMENTS }} | ${{ env.PR_STATEMENTS }} | STMTS_DIFF |
+          | **Branches** | ${{ env.BASE_BRANCHES }} | ${{ env.PR_BRANCHES }} | BRNCH_DIFF |
+          | **Functions** | ${{ env.BASE_FUNCTIONS }} | ${{ env.PR_FUNCTIONS }} | FUNC_DIFF |
+
+          ### Modified Files Coverage
+
+          ${{ env.MODIFIED_FILES_COVERAGE }}
+
+          ### Summary
+
+          SUMMARY_MESSAGE
+          EOL
+
+          # Replace placeholders with actual values
+          if (( $(echo "${{ env.COVERAGE_DIFF }} >= 0" | bc -l) )); then
+            LINES_DIFF="✅ +${{ env.COVERAGE_DIFF }}%"
+            SUMMARY="✅ **Great job!** Test coverage has increased or remained the same."
+            
+            if (( $(echo "${{ env.COVERAGE_DIFF }} >= 5" | bc -l) )); then
+              SUMMARY="$SUMMARY\n\n🎉 Excellent work! You've significantly improved test coverage."
+            fi
+          else
+            LINES_DIFF="⚠️ ${{ env.COVERAGE_DIFF }}%"
+            SUMMARY="⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes."
+            
+            if (( $(echo "${{ env.COVERAGE_DIFF }} > -5" | bc -l) )); then
+              SUMMARY="$SUMMARY\n\nThe decrease is small, but adding a few tests would help maintain quality."
+            else
+              SUMMARY="$SUMMARY\n\nThis represents a significant decrease in coverage. Please add tests to cover your changes."
+            fi
+          fi
+          
+          # Apply statement diff formatting
+          if (( $(echo "${{ env.STMTS_DIFF }} >= 0" | bc -l) )); then
+            STMTS_DIFF="✅ +${{ env.STMTS_DIFF }}%"
+          else
+            STMTS_DIFF="⚠️ ${{ env.STMTS_DIFF }}%"
+          fi
+          
+          # Apply branch diff formatting
+          if (( $(echo "${{ env.BRNCH_DIFF }} >= 0" | bc -l) )); then
+            BRNCH_DIFF="✅ +${{ env.BRNCH_DIFF }}%"
+          else
+            BRNCH_DIFF="⚠️ ${{ env.BRNCH_DIFF }}%"
+          fi
+          
+          # Apply function diff formatting
+          if (( $(echo "${{ env.FUNC_DIFF }} >= 0" | bc -l) )); then
+            FUNC_DIFF="✅ +${{ env.FUNC_DIFF }}%"
+          else
+            FUNC_DIFF="⚠️ ${{ env.FUNC_DIFF }}%"
+          fi
+          
+          # Replace the placeholders
+          sed -i "s/LINES_DIFF/$LINES_DIFF/g" comment.md
+          sed -i "s/STMTS_DIFF/$STMTS_DIFF/g" comment.md
+          sed -i "s/BRNCH_DIFF/$BRNCH_DIFF/g" comment.md
+          sed -i "s/FUNC_DIFF/$FUNC_DIFF/g" comment.md
+          sed -i "s/SUMMARY_MESSAGE/$SUMMARY/g" comment.md
+
       - name: Comment on PR
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const icon = process.env.ICON;
-            const diff = process.env.COVERAGE_DIFF;
-            const prCoverage = process.env.PR_COVERAGE;
-            const baseCoverage = process.env.BASE_COVERAGE;
-            
-            // Statements, branches, functions
-            const prStatements = process.env.PR_STATEMENTS;
-            const baseStatements = process.env.BASE_STATEMENTS;
-            const stmtsDiff = process.env.STMTS_DIFF;
-            
-            const prBranches = process.env.PR_BRANCHES;
-            const baseBranches = process.env.BASE_BRANCHES;
-            const brnchDiff = process.env.BRNCH_DIFF;
-            
-            const prFunctions = process.env.PR_FUNCTIONS;
-            const baseFunctions = process.env.BASE_FUNCTIONS;
-            const funcDiff = process.env.FUNC_DIFF;
-            
-            const modifiedFilesCoverage = process.env.MODIFIED_FILES_COVERAGE;
-            
-            // Format differences with + sign for positive changes
-            const formatDiff = (val) => {
-              const num = parseFloat(val);
-              return num >= 0 ? `+${num}%` : `${num}%`;
-            };
-            
-            // Create status indicators
-            const statusIcon = (val) => {
-              const num = parseFloat(val);
-              return num >= 0 ? '✅' : '⚠️';
-            };
-            
-<<<<<<< Updated upstream
-            const comment = `## Test Coverage Report ${icon}
-
-### Overview
-
-| Metric | Base Branch | PR Branch | Difference |
-| ------ | :---------: | :-------: | :--------: |
-| **Lines** | ${baseCoverage} | ${prCoverage} | ${statusIcon(diff)} ${formatDiff(diff)} |
-| **Statements** | ${baseStatements} | ${prStatements} | ${statusIcon(stmtsDiff)} ${formatDiff(stmtsDiff)} |
-| **Branches** | ${baseBranches} | ${prBranches} | ${statusIcon(brnchDiff)} ${formatDiff(brnchDiff)} |
-| **Functions** | ${baseFunctions} | ${prFunctions} | ${statusIcon(funcDiff)} ${formatDiff(funcDiff)} |
-
-### Modified Files Coverage
-
-${modifiedFilesCoverage ? modifiedFilesCoverage : "No coverage data available for modified files"}
-
-### Summary
-
-${diff >= 0 
-  ? '✅ **Great job!** Test coverage has increased or remained the same.' 
-  : '⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.'}`;
-            
-            // Add contextual feedback based on coverage difference
-            let contextualFeedback = '';
-            if (diff < 0 && diff > -5) {
-              contextualFeedback = 'The decrease is small, but adding a few tests would help maintain quality.';
-            } else if (diff <= -5) {
-              contextualFeedback = 'This represents a significant decrease in coverage. Please add tests to cover your changes.';
-            } else if (diff >= 5) {
-              contextualFeedback = '🎉 Excellent work! You\'ve significantly improved test coverage.';
-            }
-            
-            // If we have contextual feedback, add it to the comment
-            if (contextualFeedback) {
-              comment += `\n\n${contextualFeedback}`;
-=======
-            // Build the comment piece by piece to avoid YAML parsing issues
-            let commentBody = `## Test Coverage Report ${icon}\n\n`;
-            
-            // Add overview section
-            commentBody += `### Overview\n\n`;
-            commentBody += `| Metric | Base Branch | PR Branch | Difference |\n`;
-            commentBody += `| ------ | :---------: | :-------: | :--------: |\n`;
-            commentBody += `| **Lines** | ${baseCoverage} | ${prCoverage} | ${statusIcon(diff)} ${formatDiff(diff)} |\n`;
-            commentBody += `| **Statements** | ${baseStatements} | ${prStatements} | ${statusIcon(stmtsDiff)} ${formatDiff(stmtsDiff)} |\n`;
-            commentBody += `| **Branches** | ${baseBranches} | ${prBranches} | ${statusIcon(brnchDiff)} ${formatDiff(brnchDiff)} |\n`;
-            commentBody += `| **Functions** | ${baseFunctions} | ${prFunctions} | ${statusIcon(funcDiff)} ${formatDiff(funcDiff)} |\n\n`;
-            
-            // Add modified files section
-            commentBody += `### Modified Files Coverage\n\n`;
-            commentBody += modifiedFilesCoverage ? modifiedFilesCoverage : "No coverage data available for modified files";
-            commentBody += `\n\n`;
-            
-            // Add summary section
-            commentBody += `### Summary\n\n`;
-            
-            // Add main message based on coverage change
-            if (diff >= 0) {
-              commentBody += `✅ **Great job!** Test coverage has increased or remained the same.\n\n`;
-              
-              // Add bonus message for significant improvements
-              if (diff >= 5) {
-                commentBody += `🎉 Excellent work! You've significantly improved test coverage.`;
-              }
-            } else {
-              commentBody += `⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.\n\n`;
-              
-              // Add contextual message based on decrease severity
-              if (diff > -5) {
-                commentBody += `The decrease is small, but adding a few tests would help maintain quality.`;
-              } else {
-                commentBody += `This represents a significant decrease in coverage. Please add tests to cover your changes.`;
-              }
->>>>>>> Stashed changes
-            }
+            const fs = require('fs');
+            const commentContent = fs.readFileSync('comment.md', 'utf8');
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: commentBody
+              body: commentContent
             }) 

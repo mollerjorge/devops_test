@@ -1,9 +1,15 @@
 import React from 'react';
 
-const TextField = () => {
+const TextField = ({ onChange, placeholder = "Enter your text here...", ...props }) => {
   return (
     <div>
-      <input type="text" placeholder="Enter your text here..." />
+      <input 
+        type="text" 
+        placeholder={placeholder}
+        onChange={onChange}
+        data-testid="text-input"
+        {...props}
+      />
     </div>
   );
 };

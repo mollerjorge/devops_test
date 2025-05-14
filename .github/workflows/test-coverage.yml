@@ -176,6 +176,7 @@ jobs:
               return num >= 0 ? '✅' : '⚠️';
             };
             
+<<<<<<< Updated upstream
             const comment = `## Test Coverage Report ${icon}
 
 ### Overview
@@ -210,11 +211,50 @@ ${diff >= 0
             // If we have contextual feedback, add it to the comment
             if (contextualFeedback) {
               comment += `\n\n${contextualFeedback}`;
+=======
+            // Build the comment piece by piece to avoid YAML parsing issues
+            let commentBody = `## Test Coverage Report ${icon}\n\n`;
+            
+            // Add overview section
+            commentBody += `### Overview\n\n`;
+            commentBody += `| Metric | Base Branch | PR Branch | Difference |\n`;
+            commentBody += `| ------ | :---------: | :-------: | :--------: |\n`;
+            commentBody += `| **Lines** | ${baseCoverage} | ${prCoverage} | ${statusIcon(diff)} ${formatDiff(diff)} |\n`;
+            commentBody += `| **Statements** | ${baseStatements} | ${prStatements} | ${statusIcon(stmtsDiff)} ${formatDiff(stmtsDiff)} |\n`;
+            commentBody += `| **Branches** | ${baseBranches} | ${prBranches} | ${statusIcon(brnchDiff)} ${formatDiff(brnchDiff)} |\n`;
+            commentBody += `| **Functions** | ${baseFunctions} | ${prFunctions} | ${statusIcon(funcDiff)} ${formatDiff(funcDiff)} |\n\n`;
+            
+            // Add modified files section
+            commentBody += `### Modified Files Coverage\n\n`;
+            commentBody += modifiedFilesCoverage ? modifiedFilesCoverage : "No coverage data available for modified files";
+            commentBody += `\n\n`;
+            
+            // Add summary section
+            commentBody += `### Summary\n\n`;
+            
+            // Add main message based on coverage change
+            if (diff >= 0) {
+              commentBody += `✅ **Great job!** Test coverage has increased or remained the same.\n\n`;
+              
+              // Add bonus message for significant improvements
+              if (diff >= 5) {
+                commentBody += `🎉 Excellent work! You've significantly improved test coverage.`;
+              }
+            } else {
+              commentBody += `⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.\n\n`;
+              
+              // Add contextual message based on decrease severity
+              if (diff > -5) {
+                commentBody += `The decrease is small, but adding a few tests would help maintain quality.`;
+              } else {
+                commentBody += `This represents a significant decrease in coverage. Please add tests to cover your changes.`;
+              }
+>>>>>>> Stashed changes
             }
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment
+              body: commentBody
             }) 

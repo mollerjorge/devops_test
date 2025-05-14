@@ -2,7 +2,8 @@ name: Test Coverage Comparison
 
 on:
   pull_request:
-    branches: [ main ]
+    # Run on all branches
+    branches: [ '*' ]
 
 # Add permissions block to allow commenting on PR
 permissions:
@@ -193,16 +194,23 @@ ${modifiedFilesCoverage ? modifiedFilesCoverage : "No coverage data available fo
 ### Summary
 
 ${diff >= 0 
-  ? '✅ **Great job!** Test coverage has increased or remained the same.'
-  : '⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.'}
-
-${diff < 0 && diff > -5
-  ? 'The decrease is small, but adding a few tests would help maintain quality.'
-  : diff <= -5
-    ? 'This represents a significant decrease in coverage. Please add tests to cover your changes.'
-    : diff >= 5
-      ? '🎉 Excellent work! You\'ve significantly improved test coverage.'
-      : ''}`;
+  ? '✅ **Great job!** Test coverage has increased or remained the same.' 
+  : '⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.'}`;
+            
+            // Add contextual feedback based on coverage difference
+            let contextualFeedback = '';
+            if (diff < 0 && diff > -5) {
+              contextualFeedback = 'The decrease is small, but adding a few tests would help maintain quality.';
+            } else if (diff <= -5) {
+              contextualFeedback = 'This represents a significant decrease in coverage. Please add tests to cover your changes.';
+            } else if (diff >= 5) {
+              contextualFeedback = '🎉 Excellent work! You\'ve significantly improved test coverage.';
+            }
+            
+            // If we have contextual feedback, add it to the comment
+            if (contextualFeedback) {
+              comment += `\n\n${contextualFeedback}`;
+            }
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,

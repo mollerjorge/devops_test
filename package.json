@@ -16,6 +16,10 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:coverage:summary": "react-scripts test --coverage --coverageReporters=text-summary --watchAll=false",
+    "test:coverage:report": "react-scripts test --coverage --watchAll=false && echo 'Coverage report available at ./coverage/lcov-report/index.html'",
+    "test:analyze": "node scripts/analyze-coverage.js",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

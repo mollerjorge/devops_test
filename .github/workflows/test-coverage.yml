@@ -32,25 +32,27 @@ jobs:
       - name: Generate PR coverage
         id: pr-coverage
         run: |
-          npm run test:coverage
-          echo "PR_COVERAGE=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $2}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
+          npm run test:coverage > coverage_output.txt
+          # Extract coverage data directly from console output
+          LINES=$(grep "All files" coverage_output.txt | awk '{print $5}')
+          STATEMENTS=$(grep "All files" coverage_output.txt | awk '{print $3}')
+          BRANCHES=$(grep "All files" coverage_output.txt | awk '{print $4}')
+          FUNCTIONS=$(grep "All files" coverage_output.txt | awk '{print $5}')
           
-          # Extract file-level coverage
+          echo "PR_COVERAGE=$LINES" >> $GITHUB_ENV
+          echo "PR_STATEMENTS=$STATEMENTS" >> $GITHUB_ENV
+          echo "PR_BRANCHES=$BRANCHES" >> $GITHUB_ENV
+          echo "PR_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
+          
+          # Create a file with modified files coverage
           echo "PR_FILES_COVERAGE<<EOF" >> $GITHUB_ENV
-          grep -A 1000 "<tbody>" coverage/lcov-report/index.html | grep -B 1000 "</tbody>" | grep -v "<tbody>" | grep -v "</tbody>" > pr_files_coverage.txt
-          cat pr_files_coverage.txt >> $GITHUB_ENV
+          grep -A 100 "File " coverage_output.txt | grep -B 100 "Test Suites:" | grep -v "File " | grep -v "All files" | grep -v "Test Suites:" | grep -v "\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
-          # Extract statements, branches, functions coverage
-          echo "PR_STATEMENTS=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $4}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
-          echo "PR_BRANCHES=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $6}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
-          echo "PR_FUNCTIONS=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $8}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
           
           # Get list of modified files
           git diff --name-only ${{ github.event.pull_request.base.sha }} > modified_files.txt
-          
           mkdir -p /tmp/pr-coverage
-          cp -r coverage /tmp/pr-coverage
+          cp coverage_output.txt /tmp/pr-coverage/
       
       - name: Checkout base branch
         run: git checkout ${{ github.event.pull_request.base.sha }}
@@ -61,32 +63,29 @@ jobs:
       - name: Generate base coverage
         id: base-coverage
         run: |
-          npm run test:coverage
-          echo "BASE_COVERAGE=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $2}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
+          npm run test:coverage > coverage_output.txt
+          # Extract coverage data directly from console output
+          LINES=$(grep "All files" coverage_output.txt | awk '{print $5}')
+          STATEMENTS=$(grep "All files" coverage_output.txt | awk '{print $3}')
+          BRANCHES=$(grep "All files" coverage_output.txt | awk '{print $4}')
+          FUNCTIONS=$(grep "All files" coverage_output.txt | awk '{print $5}')
           
-          # Extract file-level coverage
-          echo "BASE_FILES_COVERAGE<<EOF" >> $GITHUB_ENV
-          grep -A 1000 "<tbody>" coverage/lcov-report/index.html | grep -B 1000 "</tbody>" | grep -v "<tbody>" | grep -v "</tbody>" > base_files_coverage.txt
-          cat base_files_coverage.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          
-          # Extract statements, branches, functions coverage
-          echo "BASE_STATEMENTS=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $4}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
-          echo "BASE_BRANCHES=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $6}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
-          echo "BASE_FUNCTIONS=$(grep "All files" coverage/lcov-report/index.html | awk -F'>' '{print $8}' | awk -F'<' '{print $1}')" >> $GITHUB_ENV
+          echo "BASE_COVERAGE=$LINES" >> $GITHUB_ENV
+          echo "BASE_STATEMENTS=$STATEMENTS" >> $GITHUB_ENV
+          echo "BASE_BRANCHES=$BRANCHES" >> $GITHUB_ENV
+          echo "BASE_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
       
       - name: Calculate coverage difference
         id: coverage-diff
         run: |
+          # Remove percentage sign if present
           PR_COV="${{ env.PR_COVERAGE }}"
           BASE_COV="${{ env.BASE_COVERAGE }}"
-          
-          # Remove percentage sign if present
           PR_COV=${PR_COV//%/}
           BASE_COV=${BASE_COV//%/}
           
           # Calculate the difference
-          DIFF=$(echo "$PR_COV - $BASE_COV" | bc)
+          DIFF=$(echo "$PR_COV - $BASE_COV" | bc -l)
           echo "COVERAGE_DIFF=$DIFF" >> $GITHUB_ENV
           
           # Calculate statements, branches, functions differences
@@ -94,21 +93,21 @@ jobs:
           BASE_STMTS="${{ env.BASE_STATEMENTS }}"
           PR_STMTS=${PR_STMTS//%/}
           BASE_STMTS=${BASE_STMTS//%/}
-          STMTS_DIFF=$(echo "$PR_STMTS - $BASE_STMTS" | bc)
+          STMTS_DIFF=$(echo "$PR_STMTS - $BASE_STMTS" | bc -l)
           echo "STMTS_DIFF=$STMTS_DIFF" >> $GITHUB_ENV
           
           PR_BRNCH="${{ env.PR_BRANCHES }}"
           BASE_BRNCH="${{ env.BASE_BRANCHES }}"
           PR_BRNCH=${PR_BRNCH//%/}
           BASE_BRNCH=${BASE_BRNCH//%/}
-          BRNCH_DIFF=$(echo "$PR_BRNCH - $BASE_BRNCH" | bc)
+          BRNCH_DIFF=$(echo "$PR_BRNCH - $BASE_BRNCH" | bc -l)
           echo "BRNCH_DIFF=$BRNCH_DIFF" >> $GITHUB_ENV
           
           PR_FUNC="${{ env.PR_FUNCTIONS }}"
           BASE_FUNC="${{ env.BASE_FUNCTIONS }}"
           PR_FUNC=${PR_FUNC//%/}
           BASE_FUNC=${BASE_FUNC//%/}
-          FUNC_DIFF=$(echo "$PR_FUNC - $BASE_FUNC" | bc)
+          FUNC_DIFF=$(echo "$PR_FUNC - $BASE_FUNC" | bc -l)
           echo "FUNC_DIFF=$FUNC_DIFF" >> $GITHUB_ENV
           
           if (( $(echo "$DIFF >= 0" | bc -l) )); then
@@ -119,106 +118,109 @@ jobs:
           
           echo "ICON=$ICON" >> $GITHUB_ENV
       
-      - name: Extract modified files coverage
+      - name: Create modified files report
         id: modified-files
         run: |
-          echo "MODIFIED_FILES_COVERAGE<<EOF" >> $GITHUB_ENV
+          echo "MODIFIED_FILES_REPORT<<EOF" >> $GITHUB_ENV
+          echo "Files changed in this PR:" >> modified_files_report.txt
+          echo "" >> modified_files_report.txt
+          
           while read file; do
             if [[ "$file" == *.js || "$file" == *.jsx || "$file" == *.ts || "$file" == *.tsx ]]; then
               filename=$(basename "$file")
-              # Look for file in coverage reports and extract data
-              grep -i "$filename" pr_files_coverage.txt | head -n 1 >> modified_files_coverage.txt || echo "No coverage data for $filename" >> modified_files_coverage.txt
+              echo "- $file" >> modified_files_report.txt
             fi
           done < modified_files.txt
           
-          if [ -s modified_files_coverage.txt ]; then
-            cat modified_files_coverage.txt >> $GITHUB_ENV
+          if [ -s modified_files_report.txt ]; then
+            cat modified_files_report.txt >> $GITHUB_ENV
           else
-            echo "No coverage data found for modified files" >> $GITHUB_ENV
+            echo "No JavaScript/TypeScript files were modified in this PR." >> $GITHUB_ENV
           fi
           echo "EOF" >> $GITHUB_ENV
       
-      - name: Create basic comment file
-        run: |
-          cat > comment.md << 'EOL'
-          ## Test Coverage Report ${{ env.ICON }}
-
-          ### Overview
-
-          | Metric | Base Branch | PR Branch | Difference |
-          | ------ | :---------: | :-------: | :--------: |
-          | **Lines** | ${{ env.BASE_COVERAGE }} | ${{ env.PR_COVERAGE }} | LINES_DIFF |
-          | **Statements** | ${{ env.BASE_STATEMENTS }} | ${{ env.PR_STATEMENTS }} | STMTS_DIFF |
-          | **Branches** | ${{ env.BASE_BRANCHES }} | ${{ env.PR_BRANCHES }} | BRNCH_DIFF |
-          | **Functions** | ${{ env.BASE_FUNCTIONS }} | ${{ env.PR_FUNCTIONS }} | FUNC_DIFF |
-
-          ### Modified Files Coverage
-
-          ${{ env.MODIFIED_FILES_COVERAGE }}
-
-          ### Summary
-
-          SUMMARY_MESSAGE
-          EOL
-
-          # Replace placeholders with actual values
-          if (( $(echo "${{ env.COVERAGE_DIFF }} >= 0" | bc -l) )); then
-            LINES_DIFF="✅ +${{ env.COVERAGE_DIFF }}%"
-            SUMMARY="✅ **Great job!** Test coverage has increased or remained the same."
-            
-            if (( $(echo "${{ env.COVERAGE_DIFF }} >= 5" | bc -l) )); then
-              SUMMARY="$SUMMARY\n\n🎉 Excellent work! You've significantly improved test coverage."
-            fi
-          else
-            LINES_DIFF="⚠️ ${{ env.COVERAGE_DIFF }}%"
-            SUMMARY="⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes."
-            
-            if (( $(echo "${{ env.COVERAGE_DIFF }} > -5" | bc -l) )); then
-              SUMMARY="$SUMMARY\n\nThe decrease is small, but adding a few tests would help maintain quality."
-            else
-              SUMMARY="$SUMMARY\n\nThis represents a significant decrease in coverage. Please add tests to cover your changes."
-            fi
-          fi
-          
-          # Apply statement diff formatting
-          if (( $(echo "${{ env.STMTS_DIFF }} >= 0" | bc -l) )); then
-            STMTS_DIFF="✅ +${{ env.STMTS_DIFF }}%"
-          else
-            STMTS_DIFF="⚠️ ${{ env.STMTS_DIFF }}%"
-          fi
-          
-          # Apply branch diff formatting
-          if (( $(echo "${{ env.BRNCH_DIFF }} >= 0" | bc -l) )); then
-            BRNCH_DIFF="✅ +${{ env.BRNCH_DIFF }}%"
-          else
-            BRNCH_DIFF="⚠️ ${{ env.BRNCH_DIFF }}%"
-          fi
-          
-          # Apply function diff formatting
-          if (( $(echo "${{ env.FUNC_DIFF }} >= 0" | bc -l) )); then
-            FUNC_DIFF="✅ +${{ env.FUNC_DIFF }}%"
-          else
-            FUNC_DIFF="⚠️ ${{ env.FUNC_DIFF }}%"
-          fi
-          
-          # Replace the placeholders
-          sed -i "s/LINES_DIFF/$LINES_DIFF/g" comment.md
-          sed -i "s/STMTS_DIFF/$STMTS_DIFF/g" comment.md
-          sed -i "s/BRNCH_DIFF/$BRNCH_DIFF/g" comment.md
-          sed -i "s/FUNC_DIFF/$FUNC_DIFF/g" comment.md
-          sed -i "s/SUMMARY_MESSAGE/$SUMMARY/g" comment.md
-
       - name: Comment on PR
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            const commentContent = fs.readFileSync('comment.md', 'utf8');
+            const icon = process.env.ICON;
+            const diff = process.env.COVERAGE_DIFF;
+            const prCoverage = process.env.PR_COVERAGE;
+            const baseCoverage = process.env.BASE_COVERAGE;
+            
+            const prStatements = process.env.PR_STATEMENTS;
+            const baseStatements = process.env.BASE_STATEMENTS;
+            const stmtsDiff = process.env.STMTS_DIFF;
+            
+            const prBranches = process.env.PR_BRANCHES;
+            const baseBranches = process.env.BASE_BRANCHES;
+            const brnchDiff = process.env.BRNCH_DIFF;
+            
+            const prFunctions = process.env.PR_FUNCTIONS;
+            const baseFunctions = process.env.BASE_FUNCTIONS;
+            const funcDiff = process.env.FUNC_DIFF;
+            
+            const prFilesCoverage = process.env.PR_FILES_COVERAGE;
+            const modifiedFilesReport = process.env.MODIFIED_FILES_REPORT;
+            
+            // Format differences with + sign for positive changes
+            const formatDiff = (val) => {
+              const num = parseFloat(val);
+              return num >= 0 ? `+${num.toFixed(2)}%` : `${num.toFixed(2)}%`;
+            };
+            
+            // Create status indicators
+            const statusIcon = (val) => {
+              const num = parseFloat(val);
+              return num >= 0 ? '✅' : '⚠️';
+            };
+            
+            // Simple comment to avoid YAML errors
+            let body = `## Test Coverage Report ${icon}\n\n`;
+            
+            // Add Overview section
+            body += `### Overview\n\n`;
+            body += `| Metric | Base Branch | PR Branch | Difference |\n`;
+            body += `| ------ | :---------: | :-------: | :--------: |\n`;
+            body += `| **Lines** | ${baseCoverage} | ${prCoverage} | ${statusIcon(diff)} ${formatDiff(diff)} |\n`;
+            body += `| **Statements** | ${baseStatements} | ${prStatements} | ${statusIcon(stmtsDiff)} ${formatDiff(stmtsDiff)} |\n`;
+            body += `| **Branches** | ${baseBranches} | ${prBranches} | ${statusIcon(brnchDiff)} ${formatDiff(brnchDiff)} |\n`;
+            body += `| **Functions** | ${baseFunctions} | ${prFunctions} | ${statusIcon(funcDiff)} ${formatDiff(funcDiff)} |\n\n`;
+            
+            // Add Files Coverage section
+            body += `### Files Coverage\n\n`;
+            body += "```\n";
+            body += prFilesCoverage || "No coverage data available";
+            body += "\n```\n\n";
+            
+            // Add Modified Files section
+            body += `### Modified Files\n\n`;
+            body += modifiedFilesReport || "No modified files found";
+            body += "\n\n";
+            
+            // Add Summary section
+            body += `### Summary\n\n`;
+            
+            if (parseFloat(diff) >= 0) {
+              body += `✅ **Great job!** Test coverage has increased or remained the same.\n\n`;
+              
+              if (parseFloat(diff) >= 5) {
+                body += `🎉 Excellent work! You've significantly improved test coverage.`;
+              }
+            } else {
+              body += `⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.\n\n`;
+              
+              if (parseFloat(diff) > -5) {
+                body += `The decrease is small, but adding a few tests would help maintain quality.`;
+              } else {
+                body += `This represents a significant decrease in coverage. Please add tests to cover your changes.`;
+              }
+            }
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: commentContent
+              body
             }) 

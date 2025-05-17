@@ -1,4 +1,4 @@
-name: Coverage Diff
+name: Vitest Coverage Report
 
 on:
   push:
@@ -9,18 +9,26 @@ on:
 
 jobs:
   test:
-    name: Coverage Diff
+    name: Test Coverage
     runs-on: ubuntu-latest
+    
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - name: 'Install Node'
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
-          cache: npm
-      - run: npm install
-      - run: npm run test
-      - name: Coverage Diff
-        uses: greatwizard/coverage-diff-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '18'
+          cache: 'npm'
+      - name: 'Install Dependencies'
+        run: npm install
+      - name: 'Run Tests with Coverage'
+        run: npm run test:coverage
+      - name: 'Report Coverage'
+        if: always() # Generate the report even if tests fail
+        uses: davelosert/vitest-coverage-report-action@v2

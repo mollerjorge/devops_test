@@ -1,28 +1,29 @@
-name: Test Coverage Comparison
+name: Coverage Diff
 
 on:
-  pull_request:
-    branches: [ main ]
-
-# Add permissions block to allow commenting on PR
-permissions:
-  contents: read
-  pull-requests: write
+  push:
+    branches:
+      - master
+      - main
+  pull_request: {}
 
 jobs:
-  coverage-comparison:
+  test:
+    name: Coverage Diff
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+          node-version: 16
+          cache: npm
+      - run: npm install
+      - run: npm run test
+      - name: Coverage Diff
+        uses: greatwizard/coverage-diff-action@v1
         with:
+<<<<<<< Updated upstream
           node-version: '18'
           cache: 'npm'
       
@@ -409,3 +410,6 @@ jobs:
               repo: context.repo.repo,
               body: commentBody
             }) 
+=======
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+>>>>>>> Stashed changes

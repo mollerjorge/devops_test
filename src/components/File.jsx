@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
-const TextField = ({ onChange, placeholder = "Enter your text here...", ...props }) => {
-    
+const TextField = ({ onChange, placeholder = "Enter your text here...", ...props }) => { 
   return (
     <div>
       <input 

@@ -110,17 +110,26 @@ jobs:
             echo "BRNCH_DIFF=${BRNCH_DIFF}" >> $GITHUB_ENV
             echo "FUNC_DIFF=${FUNC_DIFF}" >> $GITHUB_ENV
             
-            # Generate impact assessment
-            if (( $(echo "$LINE_DIFF >= 0" | bc -l) )); then
+            # Determine overall impact by checking if ANY metric has improved
+            # If at least one metric is non-negative, consider it positive impact
+            HAS_POSITIVE=$(echo "$LINE_DIFF > 0 || $STMT_DIFF > 0 || $BRNCH_DIFF > 0 || $FUNC_DIFF > 0" | bc -l)
+            
+            if [ "$HAS_POSITIVE" -eq 1 ]; then
               echo "COVERAGE_IMPACT=positive" >> $GITHUB_ENV
-              if (( $(echo "$LINE_DIFF >= 5" | bc -l) )); then
+              
+              # Check for significant increases in ANY metric
+              HAS_SIGNIFICANT=$(echo "$LINE_DIFF >= 5 || $STMT_DIFF >= 5 || $BRNCH_DIFF >= 5 || $FUNC_DIFF >= 5" | bc -l)
+              if [ "$HAS_SIGNIFICANT" -eq 1 ]; then
                 echo "COVERAGE_SIGNIFICANCE=significant" >> $GITHUB_ENV
               else
                 echo "COVERAGE_SIGNIFICANCE=minor" >> $GITHUB_ENV
               fi
             else
               echo "COVERAGE_IMPACT=negative" >> $GITHUB_ENV
-              if (( $(echo "$LINE_DIFF <= -5" | bc -l) )); then
+              
+              # Check for significant decreases in ANY metric
+              HAS_SIGNIFICANT_DECREASE=$(echo "$LINE_DIFF <= -5 || $STMT_DIFF <= -5 || $BRNCH_DIFF <= -5 || $FUNC_DIFF <= -5" | bc -l)
+              if [ "$HAS_SIGNIFICANT_DECREASE" -eq 1 ]; then
                 echo "COVERAGE_SIGNIFICANCE=significant" >> $GITHUB_ENV
               else
                 echo "COVERAGE_SIGNIFICANCE=minor" >> $GITHUB_ENV
@@ -159,6 +168,21 @@ jobs:
               const numValue = parseFloat(value);
               if (isNaN(numValue)) return '';
               return numValue >= 0 ? '✅' : '⚠️';
+            };
+            
+            // Find the best performing metric for highlighting
+            const findHighlight = () => {
+              const metrics = [
+                { name: 'Lines', diff: process.env.LINE_DIFF },
+                { name: 'Statements', diff: process.env.STMT_DIFF },
+                { name: 'Branches', diff: process.env.BRNCH_DIFF },
+                { name: 'Functions', diff: process.env.FUNC_DIFF }
+              ];
+              
+              // Filter for valid metrics and sort by highest improvement
+              return metrics
+                .filter(m => m.diff && !isNaN(parseFloat(m.diff)))
+                .sort((a, b) => parseFloat(b.diff) - parseFloat(a.diff))[0];
             };
             
             // Build comment heading
@@ -217,14 +241,21 @@ jobs:
               const impact = process.env.COVERAGE_IMPACT;
               const significance = process.env.COVERAGE_SIGNIFICANCE;
               
+              // Find the best metric to highlight
+              const bestMetric = findHighlight();
+              
               if (impact === 'positive') {
-                commentBody += '✅ **Great job!** Test coverage has increased or remained the same.\n\n';
+                commentBody += '✅ **Great job!** Test coverage has improved in this PR.\n\n';
+                
+                if (bestMetric && parseFloat(bestMetric.diff) > 0) {
+                  commentBody += `Notable improvement in **${bestMetric.name}** coverage: ${formatDiff(bestMetric.diff)}\n\n`;
+                }
                 
                 if (significance === 'significant') {
                   commentBody += '🎉 Excellent work! You\'ve significantly improved test coverage.';
                 }
               } else {
-                commentBody += '⚠️ **Warning:** Test coverage has decreased with this PR. Consider adding more tests to cover your changes.\n\n';
+                commentBody += '⚠️ **Warning:** Some test coverage metrics have decreased with this PR. Consider adding more tests to cover your changes.\n\n';
                 
                 if (significance === 'minor') {
                   commentBody += 'The decrease is small, but adding a few tests would help maintain quality.';

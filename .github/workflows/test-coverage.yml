@@ -27,8 +27,8 @@ jobs:
           cache: 'npm'
       - name: 'Install Dependencies'
         run: npm install
-      - name: 'Run Tests with Coverage'
-        run: npm run test:coverage
+      - name: 'Test'
+        run: npx vitest --coverage.enabled true
       - name: 'Report Coverage'
         if: always() # Generate the report even if tests fail
         uses: davelosert/vitest-coverage-report-action@v2

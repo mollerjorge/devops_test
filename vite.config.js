@@ -7,9 +7,21 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     coverage: {
-      provider: 'v8', // or 'istanbul'
       reporter: ['text', 'json-summary', 'json'],
       reportOnFailure: true, // Generate coverage reports even if tests fail
+      include: ['src/**/*.{js,jsx,ts,tsx}'],
+      exclude: [
+        'src/index.js',                    // Entry point
+        'src/App.js',                      // Main app component
+        'src/setupTests.js',               // Test setup file
+        'src/reportWebVitals.js',          // React utility
+        'src/**/*.test.{js,jsx,ts,tsx}',   // Test files
+        'src/**/*.spec.{js,jsx,ts,tsx}',   // Spec files
+        'scripts/**/*',                    // Utility scripts
+        '**/*.config.{js,ts}',             // Config files
+        '**/node_modules/**',              // Dependencies
+        '**/*.d.ts'                        // Type definitions
+      ],
       thresholds: {
         lines: 70,
         branches: 70,

@@ -25,6 +25,7 @@ const Button = ({
     }
   };
 
+  
   const getSizeClasses = () => {
     switch (size) {
       case 'small':

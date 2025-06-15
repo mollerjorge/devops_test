@@ -47,13 +47,7 @@ jobs:
         run: pnpm install
 
       - name: Run tests with coverage
-        # Always exit with success to make this informative only
-        # The coverage report will still be generated and posted
-        run: |
-          pnpm test:coverage || EXIT_CODE=$?
-          echo "Test coverage exit code: ${EXIT_CODE:-0}"
-          # Always exit with 0 to prevent blocking PRs
-          exit 0
+        run: pnpm test:coverage
 
       - name: Report Coverage
         # Always generate the report for informative purposes
@@ -62,5 +56,9 @@ jobs:
         with:
           json-summary-path: './coverage/coverage-summary.json'
           json-final-path: './coverage/coverage-final.json'
+<<<<<<< Updated upstream
           vite-config-path: './vitest.config.js'
+=======
+          vite-config-path: './vite.config.js'
+>>>>>>> Stashed changes
           # This action won't fail the workflow, it just posts a comment 

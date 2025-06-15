@@ -62,5 +62,5 @@ jobs:
         with:
           json-summary-path: './coverage/coverage-summary.json'
           json-final-path: './coverage/coverage-final.json'
-          vite-config-path: './vitest.config.ts'
+          vite-config-path: './vitest.config.js'
           # This action won't fail the workflow, it just posts a comment 

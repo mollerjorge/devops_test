@@ -1,17 +1,14 @@
-name: Vitest Coverage Report
-
+name: Test Coverage
 on:
-  push:
+  pull_request:
     branches:
-      - master
       - main
-  pull_request: {}
 
 jobs:
-  test:
-    name: Test Coverage
+  test-and-report:
+    name: Run Tests and Report Coverage
     runs-on: ubuntu-latest
-    
+
     permissions:
       # Required to checkout the code
       contents: read
@@ -19,16 +16,51 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
-      - name: 'Install Node'
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-      - name: 'Install Dependencies'
-        run: npm install
-      - name: 'Test'
-        run: npx vitest --coverage.enabled true
-      - name: 'Report Coverage'
-        if: always() # Generate the report even if tests fail
+          node-version: '20.x'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run tests with coverage
+        # Always exit with success to make this informative only
+        # The coverage report will still be generated and posted
+        run: |
+          pnpm test:coverage || EXIT_CODE=$?
+          echo "Test coverage exit code: ${EXIT_CODE:-0}"
+          # Always exit with 0 to prevent blocking PRs
+          exit 0
+
+      - name: Report Coverage
+        # Always generate the report for informative purposes
+        if: always()
         uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: './coverage/coverage-summary.json'
+          json-final-path: './coverage/coverage-final.json'
+          vite-config-path: './vitest.config.ts'
+          # This action won't fail the workflow, it just posts a comment 

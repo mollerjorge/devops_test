@@ -14,6 +14,7 @@ export const Banner: React.FC<BannerProps> = ({
   variant = 'info',
   onClose,
 }) => {
+
   return (
     <div className={`banner banner-${variant}`} role="alert">
       <div className="banner-content">

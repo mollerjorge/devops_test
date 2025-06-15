@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Banner } from './Banner';
 
 describe('Banner', () => {
-  it('renders with title', () => {
+  it('renders with required title prop', () => {
     render(<Banner title="Test Title" />);
     expect(screen.getByText('Test Title')).toBeInTheDocument();
   });
@@ -87,5 +87,24 @@ describe('Banner', () => {
       expect(container.firstChild).toHaveClass(`banner-${variant}`);
       unmount();
     });
+  });
+
+  it('renders with correct HTML structure', () => {
+    const { container } = render(
+      <Banner 
+        title="Test Title" 
+        description="Test Description" 
+      />
+    );
+    
+    const banner = container.firstChild as HTMLElement;
+    const content = banner.firstChild as HTMLElement;
+    const title = content.firstChild as HTMLElement;
+    const description = content.lastChild as HTMLElement;
+
+    expect(banner.tagName).toBe('DIV');
+    expect(content.tagName).toBe('DIV');
+    expect(title.tagName).toBe('H3');
+    expect(description.tagName).toBe('P');
   });
 }); 
